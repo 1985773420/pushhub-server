@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/action_refresh" android:title="刷新" android:icon="@drawable/ic_refresh" app:showAsAction="always" />
+    <item android:id="@+id/action_notify_settings" android:title="系统通知设置" app:showAsAction="never" />
+    <item android:id="@+id/action_keepalive" android:title="后台保活设置" app:showAsAction="never" />
+    <item android:id="@+id/action_repair" android:title="重新配对" app:showAsAction="never" />
+    <item android:id="@+id/action_unpair" android:title="退出配对" app:showAsAction="never" />
+</menu>

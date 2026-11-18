@@ -1,0 +1,1175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>PushHub 控制台</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #f3f5fb; --card: #fff; --ink: #0f172a; --muted: #64748b; --line: #e6eaf3;
+    --brand: #4f46e5; --brand-2: #7c3aed; --brand-soft: #eef2ff;
+    --ok: #16a34a; --warn: #d97706; --err: #dc2626;
+    --sidebar: #0b1224; --sidebar-ink: #cbd5e1;
+    --radius: 16px; --shadow: 0 10px 30px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 14px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; height: 100vh; overflow: hidden;
+  }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--brand); text-decoration: none; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  ::selection { background: #c7d2fe; }
+
+  /* ---------- auth ---------- */
+  #authView {
+    position: fixed; inset: 0; display: grid; place-items: center; padding: 20px;
+    background: radial-gradient(1200px 600px at 10% -10%, #312e81 0%, transparent 55%),
+                radial-gradient(900px 500px at 110% 110%, #1e1b4b 0%, transparent 50%),
+                #0b1224;
+    z-index: 100;
+  }
+  #authView.hidden { display: none; }
+  .auth-card {
+    width: 100%; max-width: 460px; background: rgba(255,255,255,.97);
+    border-radius: 22px; padding: 34px; box-shadow: 0 30px 80px rgba(0,0,0,.35);
+  }
+  .auth-logo { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; margin-bottom: 18px; }
+  .auth-card h1 { margin: 0; font-size: 22px; letter-spacing: .2px; }
+  .auth-card p { color: var(--muted); margin: 8px 0 24px; font-size: 13px; }
+  .auth-card input { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; outline: none; }
+  .auth-card input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
+  .btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff;
+    border-radius: 12px; padding: 11px 18px; font-weight: 600; }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .auth-card .btn-primary { width: 100%; margin-top: 14px; padding: 13px; }
+  .auth-hint { margin-top: 16px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .auth-hint code { background: #eef2ff; color: #3730a3; padding: 1px 6px; border-radius: 6px; }
+
+  /* ---------- shell ---------- */
+  #app { display: flex; width: 100%; height: 100vh; overflow: hidden; }
+  #app.hidden { display: none; }
+  aside {
+    width: 248px; flex: 0 0 248px; background: linear-gradient(180deg, #0b1224 0%, #0e1730 100%);
+    color: var(--sidebar-ink); padding: 22px 16px; display: flex; flex-direction: column;
+    height: 100vh; overflow-y: auto; overscroll-behavior: contain;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 0 6px 22px; }
+  .brand .logo { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; box-shadow: 0 8px 20px rgba(79,70,229,.35); }
+  .brand b { color: #fff; font-size: 16px; display: block; line-height: 1.2; }
+  .brand span { font-size: 11.5px; color: #94a3b8; }
+  nav { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+  nav button {
+    display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 11px;
+    color: var(--sidebar-ink); font-size: 13.5px; text-align: left; transition: .15s;
+  }
+  nav button svg { width: 18px; height: 18px; opacity: .85; }
+  nav button:hover { background: rgba(148,163,184,.12); }
+  nav button.active { background: linear-gradient(135deg, rgba(79,70,229,.95), rgba(124,58,237,.85)); color: #fff; }
+  .side-foot { margin-top: auto; padding: 12px 6px 4px; font-size: 11.5px; color: #64748b; line-height: 1.7; }
+  .side-foot a { color: #a5b4fc; }
+
+  main { flex: 1; min-width: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+    padding: 0; max-width: 1280px; margin: 0 auto; width: 100%; }
+  .topbar { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 18px 30px 12px; background: var(--bg); position: relative; z-index: 12; }
+  .scroll-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 30px 60px; }
+  .topbar h1 { font-size: 21px; margin: 0; letter-spacing: .2px; }
+  .chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; background: #fff; border: 1px solid var(--line);
+    padding: 6px 11px; border-radius: 999px; font-size: 12px; color: #334155; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .chip button { color: var(--muted); display: inline-flex; }
+  .chip button:hover { color: var(--err); }
+
+  .section { display: none; animation: fade .18s ease; }
+  .section.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
+  .stat { background: var(--card); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid #f0f3fa; }
+  .stat .k { color: var(--muted); font-size: 12.5px; }
+  .stat .v { font-size: 26px; font-weight: 700; margin-top: 4px; letter-spacing: -.5px; }
+  .stat .s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .stat.ok .v { color: var(--ok); } .stat.warn .v { color: var(--warn); } .stat.err .v { color: var(--err); }
+
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid #f0f3fa; padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15.5px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .card .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .btn { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 12px; font-size: 12.5px;
+    display: inline-flex; align-items: center; gap: 6px; transition: .15s; white-space: nowrap; }
+  .btn:hover { border-color: #c7d2fe; background: #f8faff; }
+  .btn.primary { background: linear-gradient(135deg, var(--brand), var(--brand-2)); border: 0; color: #fff; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.06); background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+  .btn.ghost { background: transparent; }
+  .btn.danger { color: var(--err); border-color: #fecaca; background: #fff5f5; }
+  .btn.small { padding: 5px 9px; font-size: 11.5px; border-radius: 8px; }
+  .btn svg { width: 14px; height: 14px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 980px) { .grid2 { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 760px) {
+    body { display: block; height: auto; overflow: auto; }
+    #app { display: block; height: auto; overflow: visible; }
+    aside { position: sticky; top: 0; z-index: 30; width: 100%; height: auto; padding: 14px 12px; flex-direction: row; align-items: center; gap: 10px; overflow-x: auto; background: rgba(11,18,36,.98); backdrop-filter: blur(8px); }
+    .brand { padding: 0 8px 0 2px; flex: 0 0 auto; }
+    .brand span, .side-foot { display: none; }
+    nav { flex-direction: row; margin: 0; gap: 6px; }
+    nav button { padding: 8px 10px; white-space: nowrap; }
+    nav button svg { display: none; }
+    main { height: auto; overflow: visible; display: block; }
+    .scroll-body { overflow: visible; padding: 0 14px 50px; }
+    .topbar { position: static; padding: 10px 14px 6px; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .topbar h1 { font-size: 18px; }
+  }
+
+  .item { border: 1px solid var(--line); border-radius: 13px; padding: 13px 14px; margin-top: 10px; background: #fff; }
+  .item:first-of-type { margin-top: 0; }
+  .item .head { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+  .item .title { font-weight: 600; font-size: 14px; }
+  .item .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .item .actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; border-radius: 999px; padding: 2px 9px; background: #f1f5f9; color: #475569; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.ok { background: #ecfdf5; color: var(--ok); }
+  .badge.off { background: #f1f5f9; color: var(--muted); }
+  .badge.err { background: #fef2f2; color: var(--err); }
+  .badge.warn { background: #fffbeb; color: var(--warn); }
+
+  .code { background: #0b1224; color: #e2e8f0; border-radius: 10px; padding: 10px 12px; font-size: 12px;
+    overflow-x: auto; white-space: pre; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .inline-code { background: #f1f5f9; color: #334155; padding: 1px 6px; border-radius: 6px; font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
+  .kv { display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; font-size: 12.5px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { word-break: break-all; }
+
+  .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+  .switch input { appearance: none; width: 38px; height: 22px; border-radius: 999px; background: #cbd5e1; position: relative; outline: none; cursor: pointer; transition: .18s; }
+  .switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .18s; }
+  .switch input:checked { background: var(--brand); }
+  .switch input:checked::after { left: 19px; }
+
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  #section-messages .toolbar, #section-activity .toolbar {
+    position: sticky; top: 0; z-index: 8; background: #fff;
+    padding: 2px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 10px;
+    box-shadow: 0 6px 14px rgba(15,23,42,.04);
+  }
+  .toolbar input[type=search], .toolbar select { border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; background: #fff; outline: none; }
+  .toolbar input[type=search] { min-width: 180px; flex: 1; }
+  .toolbar input:focus, .toolbar select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+
+  .msg { border-top: 1px solid var(--line); padding: 12px 0; }
+  .msg:first-child { border-top: 0; }
+  .msg .t { font-weight: 600; font-size: 13.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .msg .b { color: #334155; font-size: 13px; margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
+  .msg .b.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .msg .meta { color: var(--muted); font-size: 11.5px; margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .msg .more { color: var(--brand); font-size: 12px; padding: 0; }
+  .attachments { display: flex; flex-direction: column; gap: 8px; margin-top: 9px; }
+  .att-img { display: inline-block; vertical-align: top; width: 240px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #f8fafc; }
+  .att-img img { display: block; width: 240px; height: 180px; object-fit: contain; background: #f1f5f9; border-radius: 11px; }
+  .att-video { display: block; width: 100%; max-width: 480px; max-height: 320px; border-radius: 12px; background: #0b1224; border: 1px solid var(--line); }
+  .att-file { display: inline-flex; align-items: center; gap: 8px; max-width: 480px; border: 1px solid var(--line); border-radius: 11px; padding: 8px 11px; background: #f8fafc; color: #334155; text-decoration: none; font-size: 12.5px; }
+  .att-file:hover { border-color: var(--brand); background: var(--brand-soft); }
+  .att-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .att-size { color: var(--muted); font-size: 11px; flex: 0 0 auto; }
+  .att-ico { flex: 0 0 auto; }
+  .empty { color: var(--muted); font-size: 13px; padding: 14px 2px; }
+
+  .diag-row { border-top: 1px solid var(--line); padding: 10px 0; font-size: 12.5px; }
+  .diag-row:first-child { border-top: 0; }
+  .diag-row .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .diag-row .hdr { color: var(--muted); font-size: 11.5px; margin-top: 4px; word-break: break-all; }
+  .diag-row pre { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 11px; overflow-x: auto; margin: 6px 0 0; }
+
+  /* modal */
+  #modal { position: fixed; inset: 0; background: rgba(15,23,42,.55); backdrop-filter: blur(3px); display: none; z-index: 60; padding: 20px; overflow: auto; }
+  #modal.open { display: block; }
+  .modal-card { max-width: 720px; margin: 4vh auto; background: #fff; border-radius: 18px; box-shadow: 0 30px 90px rgba(0,0,0,.3); overflow: hidden; }
+  .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .modal-head h3 { margin: 0; font-size: 16px; flex: 1; }
+  .modal-body { padding: 20px 22px; max-height: 68vh; overflow: auto; }
+  .modal-foot { padding: 14px 22px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+  .tabs button { padding: 6px 11px; border-radius: 999px; background: #f1f5f9; font-size: 12px; color: #475569; }
+  .tabs button.active { background: var(--brand); color: #fff; }
+
+  .paircode { font-size: 40px; letter-spacing: 8px; font-weight: 800; color: var(--brand); text-align: center; margin: 18px 0 6px; font-family: ui-monospace, Menlo, monospace; }
+  .center { text-align: center; }
+
+  #toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(10px);
+    background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0;
+    pointer-events: none; transition: .2s; z-index: 90; max-width: 90vw; }
+  #toast.show { opacity: 1; transform: translateX(-50%); }
+  .muted { color: var(--muted); }
+  .mt8 { margin-top: 8px; } .mt14 { margin-top: 14px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="authView">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 3c-3.9 0-7 3.1-7 7v4.6L3.6 17.4c-.5.8.1 1.8 1 1.8h14.8c.9 0 1.5-1 1-1.8L19 14.6V10c0-3.9-3.1-7-7-7zm-2.5 17h5c0 1.4-1.1 2.5-2.5 2.5S9.5 21.4 9.5 20z"/></svg>
+    </div>
+    <h1>PushHub 控制台</h1>
+    <p>多来源消息 → 手机通知 · 输入管理员令牌进入</p>
+    <input id="tokenInput" type="password" autocomplete="current-password" placeholder="ADMIN_TOKEN" />
+    <button class="btn-primary" id="saveToken">进入控制台</button>
+    <div class="auth-hint">
+      令牌在服务端 <code>.env</code> 的 <code>ADMIN_TOKEN</code>（例如
+      <code>检查部署环境中的 ADMIN_TOKEN</code>）。只保存在本机浏览器。
+    </div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <aside>
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3c-3.9 0-7 3.1-7 7v4.6L3.6 17.4c-.5.8.1 1.8 1 1.8h14.8c.9 0 1.5-1 1-1.8L19 14.6V10c0-3.9-3.1-7-7-7zm-2.5 17h5c0 1.4-1.1 2.5-2.5 2.5S9.5 21.4 9.5 20z"/></svg>
+      </div>
+      <div><b>PushHub</b><span>消息推送控制台</span></div>
+    </div>
+    <nav id="nav">
+      <button data-section="overview" class="active">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>概览
+      </button>
+      <button data-section="devices">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 4v12h10V6H7zm5 16a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>设备
+      </button>
+      <button data-section="sources">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 2 7l10 5 10-5-10-5zm0 9L2 16l10 5 10-5-10-5zm0 7.5L4.5 14.8 2 16l10 5 10-5-2.5-1.2L12 18.5z"/></svg>来源
+      </button>
+      <button data-section="messages">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2zm3 5h10V7H7v2zm0 4h7v-2H7v2z"/></svg>消息
+      </button>
+      <button data-section="activity">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 12h4l3 8 4-16 3 8h4v2h-5.4l-2.2-6-3.7 14.6L8.6 14H3v-2z"/></svg>接入诊断
+      </button>
+      <button data-section="settings">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9.4 4a7.6 7.6 0 0 1-.1 1.2l2 1.6-2 3.4-2.4-1a7.6 7.6 0 0 1-2 1.2l-.4 2.6h-4l-.4-2.6a7.6 7.6 0 0 1-2-1.2l-2.4 1-2-3.4 2-1.6a7.6 7.6 0 0 1-.1-1.2c0-.4 0-.8.1-1.2l-2-1.6 2-3.4 2.4 1a7.6 7.6 0 0 1 2-1.2l.4-2.6h4l.4 2.6a7.6 7.6 0 0 1 2 1.2l2.4-1 2 3.4-2 1.6c.1.4.1.8.1 1.2z"/></svg>设置
+      </button>
+    </nav>
+    <div class="side-foot">
+      <button class="btn primary" data-action="download-apk">下载最新版 APK <span class="apk-version"></span></button> · <a href="#" data-action="lock">锁定控制台</a><br>
+      <span id="sideServer"></span>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <h1 id="pageTitle">概览</h1>
+      <div class="chips">
+        <span class="chip" id="serverChip"><span class="dot"></span><span id="serverChipText">…</span></span>
+        <span class="chip" id="onlineChip">在线 0</span>
+        <button class="chip" data-action="refresh" title="刷新">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+        <button class="chip" data-action="lock" title="锁定">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17 9V7a5 5 0 0 0-10 0v2H5v11h14V9h-2zM9 7a3 3 0 0 1 6 0v2H9V7z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="scroll-body">
+
+    <section class="section active" id="section-overview">
+      <div class="stats">
+        <div class="stat ok"><div class="k">在线设备</div><div class="v" id="statOnline">0</div><div class="s" id="statDevices">共 0 台</div></div>
+        <div class="stat"><div class="k">今日消息</div><div class="v" id="statToday">0</div><div class="s" id="statTotal">累计 0 条</div></div>
+        <div class="stat"><div class="k">消息来源</div><div class="v" id="statSources">0</div><div class="s">每个来源独立 webhook</div></div>
+        <div class="stat warn"><div class="k">待收消息</div><div class="v" id="statPending">0</div><div class="s">设备离线时自动排队</div></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>快速开始</h2>
+          <div class="sub">配对手机、发一条测试、拿到接入地址。</div>
+          <div class="row">
+            <button class="btn primary" data-action="pair">生成配对码</button>
+            <button class="btn primary" data-action="compose">发送消息</button>
+            <button class="btn" data-action="quick-test">发送测试推送</button>
+            <button class="btn primary" data-action="download-apk">下载最新版 APK <span class="apk-version"></span></button>
+          </div>
+          <div class="kv mt14">
+            <div class="k">服务地址</div><div class="v mono" id="ovServer">—</div>
+            <div class="k">运行时长</div><div class="v" id="ovUptime">—</div>
+            <div class="k">接入方式</div><div class="v" id="ovAuth">直接密钥 / HMAC 签名均支持</div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>最近接入</h2>
+          <div class="sub">Webhook 是否到达、用了什么认证方式，点「接入诊断」看详情。</div>
+          <div id="ovActivity" class="muted">暂无记录</div>
+          <button class="btn small mt14" data-section="activity">查看全部</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>推荐接入方式</h2>
+        <div class="sub">在你的平台里填写「接收地址」和「签名密钥」即可；填法见每个来源的「接入示例」。</div>
+        <div class="code" id="ovExample">—</div>
+      </div>
+    </section>
+
+    <section class="section" id="section-devices">
+      <div class="card">
+        <h2>已配对设备 <span class="muted" id="deviceSummary"></span></h2>
+        <div class="sub">一个设备一个 token；同 token 重连会互顶，删除后立即失效。</div>
+        <div id="devices"></div>
+      </div>
+    </section>
+
+    <section class="section" id="section-sources">
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <h2 style="margin:0">消息来源</h2>
+            <div class="sub" style="margin:4px 0 0">每个来源有独立地址与密钥；可单独启停、测推送、重置密钥。</div>
+          </div>
+          <button class="btn primary" data-action="add-source">＋ 新建来源</button>
+        </div>
+      </div>
+      <div id="sources"></div>
+    </section>
+
+    <section class="section" id="section-messages">
+      <div class="card">
+        <div class="toolbar">
+          <select id="msgSource"><option value="all">全部来源</option></select>
+          <input type="search" id="msgSearch" placeholder="搜索标题或正文…">
+          <button class="btn primary" data-action="compose">发送消息</button>
+          <button class="btn" data-action="refresh">刷新</button>
+          <button class="btn danger" data-action="clear-messages">清空历史</button>
+        </div>
+        <div id="messages"></div>
+      </div>
+    </section>
+
+    <section class="section" id="section-activity">
+      <div class="card">
+        <div class="toolbar">
+          <label class="switch"><input type="checkbox" id="onlyFailed">只看失败</label>
+          <button class="btn" data-action="refresh">刷新</button>
+          <button class="btn danger" data-action="clear-activity">清空记录</button>
+          <span class="muted" id="activityHint">记录最近 100 次接入，含收到但认证失败的请求。</span>
+        </div>
+        <div id="activity"></div>
+      </div>
+    </section>
+
+    <section class="section" id="section-settings">
+      <div class="grid2">
+        <div class="card">
+          <h2>配对地址与数据保留</h2>
+          <label>公网 APK 下载地址（完整 APK URL，可留空）<input id="setApkPublicDownloadUrl" type="url" placeholder="https://downloads.example.com/PushHub-1.7.1.apk" style="width:100%"></label>
+          <p class="muted">独立于公网配对地址；未设置时仅提供当前请求地址的下载二维码。二维码为普通浏览器下载链接，不包含令牌。</p>
+          <label>内网配对地址（留空使用控制台请求地址）<input id="setLocalPairUrl" type="url" placeholder="http://192.168.1.10:8095" style="width:100%"></label>
+          <label>公网配对地址（公网模式必填）<input id="setPublicPairUrl" type="url" placeholder="https://push.example.com" style="width:100%"></label>
+          <p class="muted">可含端口、路径；不可含账号密码、查询参数或片段。更改后点击保存，重新生成二维码。</p>
+          <div class="sub">只影响服务端历史消息；设备离线队列另算（每台最多 200 条）。</div>
+          <div class="row">
+            <label class="muted">保留天数</label>
+            <input id="setRetention" type="number" min="1" max="90" style="width:90px;border:1px solid var(--line);border-radius:8px;padding:7px">
+            <button class="btn primary" data-action="save-settings">保存</button>
+          </div>
+          <div class="row mt8">
+            <label class="muted">最多消息</label>
+            <input id="setMax" type="number" min="100" max="50000" style="width:110px;border:1px solid var(--line);border-radius:8px;padding:7px">
+          </div>
+        </div>
+        <div class="card">
+          <h2>关于</h2>
+          <div class="kv">
+            <div class="k">版本</div><div class="v" id="setVersion">—</div>            <div class="k">服务地址</div><div class="v mono" id="setServer">—</div>
+            <div class="k">APK</div><div class="v"><button class="btn" data-action="download-apk">下载最新版 <span class="apk-version"></span></button></div>
+            <div class="k">文档</div><div class="v"><a href="/README.md" target="_blank">/README.md</a></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div>
+  </main>
+</div>
+
+<div id="modal"><div class="modal-card" id="modalCard"></div></div>
+<div id="toast"></div>
+
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const state = {
+    token: localStorage.getItem('pushhub_admin') || '',
+    data: null,
+    section: 'overview',
+    secrets: {},          // sourceId -> {secret,key}
+    expanded: new Set(),  // message ids expanded
+    full: {},             // message id -> full body (form summary lists)
+    revealed: new Set(),  // source ids showing secret
+    msgLimit: 50,
+    onlyFailed: false,
+    timer: null,
+  };
+
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 2400);
+  }
+  function timeAgo(iso) {
+    if (!iso) return '从未';
+    const d = (Date.now() - Date.parse(iso)) / 1000;
+    if (!Number.isFinite(d)) return iso;
+    if (d < 60) return '刚刚';
+    if (d < 3600) return Math.floor(d / 60) + ' 分钟前';
+    if (d < 86400) return Math.floor(d / 3600) + ' 小时前';
+    return Math.floor(d / 86400) + ' 天前';
+  }
+  function fmtTime(iso) {
+    try { return new Date(iso).toLocaleTimeString('zh-CN', { hour12: false }); } catch { return iso; }
+  }
+  async function api(path, opts = {}) {
+    const r = await fetch(path, {
+      method: opts.method || 'GET',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + state.token },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    let j = null;
+    try { j = await r.json(); } catch {}
+    if (r.status === 401) {
+      lock();
+      throw new Error(j?.error || '管理员令牌无效');
+    }
+    if (!r.ok) throw new Error(j?.error || ('HTTP ' + r.status));
+    return j;
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); toast('已复制'); }
+    catch {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('已复制'); } catch { toast('复制失败'); }
+      ta.remove();
+    }
+  }
+  function sourceSecret(id) {
+    if (state.secrets[id]) return Promise.resolve(state.secrets[id]);
+    return api('/api/admin/sources/' + encodeURIComponent(id) + '/secret').then((r) => {
+      state.secrets[id] = r;
+      return r;
+    });
+  }
+
+  // ---------------- auth ----------------
+  function showApp() {
+    $('#authView').classList.add('hidden');
+    $('#app').classList.remove('hidden');
+    startTimer();
+  }
+  function lock() {
+    closeModal();
+    state.token = '';
+    localStorage.removeItem('pushhub_admin');
+    $('#authView').classList.remove('hidden');
+    $('#app').classList.add('hidden');
+    clearInterval(state.timer);
+    state.timer = null;
+  }
+  $('#saveToken').onclick = async () => {
+    state.token = $('#tokenInput').value.trim();
+    if (!state.token) return toast('请输入管理员令牌');
+    localStorage.setItem('pushhub_admin', state.token);
+    try {
+      await refresh();
+      showApp();
+      toast('已进入控制台');
+    } catch (e) { toast(e.message); }
+  };
+  $('#tokenInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#saveToken').click(); });
+
+  // ---------------- sections ----------------
+  function setSection(name) {
+    state.section = name;
+    $$('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.section === name));
+    $$('.section').forEach((s) => s.classList.toggle('active', s.id === 'section-' + name));
+    $('#pageTitle').textContent = ({ overview: '概览', devices: '设备', sources: '消息来源', messages: '消息记录', activity: '接入诊断', settings: '设置' })[name] || '概览';
+    if (name === 'messages') renderMessages();
+  }
+  $('#nav').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-section]');
+    if (b) setSection(b.dataset.section);
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-section]');
+    if (b && !b.closest('#nav') && b.tagName === 'BUTTON') setSection(b.dataset.section);
+  });
+
+  // ---------------- data ----------------
+  async function refresh() {
+    if (!state.token) return;
+    const d = await api('/api/admin/overview');
+    state.data = d;
+    const srv = d.serverUrl;
+    $('#serverChipText').textContent = srv.replace(/^https?:\/\//, '');
+    $('#sideServer').textContent = srv.replace(/^https?:\/\//, '');
+    $('#onlineChip').textContent = '在线 ' + d.stats.online + ' / ' + d.devices.length;
+    $('#setServer').textContent = srv;
+    try {
+      const apk = await api('/api/admin/apk');
+      $('#setVersion').textContent = `Android ${apk.versionName} (${apk.versionCode})`;
+      document.querySelectorAll('.apk-version').forEach(el => el.textContent = apk.versionName);
+    } catch { $('#setVersion').textContent = 'APK 发布信息不可用'; document.querySelectorAll('.apk-version').forEach(el => el.textContent = '校验失败'); }
+    $('#ovServer').textContent = srv;
+    $('#ovUptime').textContent = d.uptime ? (Math.floor(d.uptime / 3600) + ' 小时 ' + Math.floor((d.uptime % 3600) / 60) + ' 分钟') : '—';
+    if (!state.settingsInitialized) {
+    $('#setApkPublicDownloadUrl').value = d.settings.apkPublicDownloadUrl || '';
+    $('#setRetention').value = d.settings.retentionDays;
+    $('#setMax').value = d.settings.maxMessages;
+    $('#setLocalPairUrl').value = d.settings.localPairUrl || '';
+    $('#setPublicPairUrl').value = d.settings.publicPairUrl || '';
+    state.settingsInitialized = true;
+    }
+    renderOverview(d);
+    renderDevices(d);
+    renderSources(d);
+    fillSourceFilter(d);
+    renderMessages();
+    renderActivity();
+  }
+  function startTimer() {
+    if (state.timer) clearInterval(state.timer);
+    state.timer = setInterval(() => {
+      if (document.hidden || $('#modal').classList.contains('open')) return;
+      refresh().catch(() => {});
+    }, 5000);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh().catch(() => {}); });
+
+  // ---------------- overview ----------------
+  function renderOverview(d) {
+    $('#statOnline').textContent = d.stats.online;
+    $('#statDevices').textContent = '共 ' + d.devices.length + ' 台';
+    $('#statToday').textContent = d.stats.messages24h;
+    $('#statTotal').textContent = '累计 ' + (d.stats.totalMessages ?? d.messages.length) + ' 条';
+    $('#statSources').textContent = d.sources.length;
+    $('#statPending').textContent = d.devices.reduce((a, x) => a + (x.pending || 0), 0);
+    const act = d.activity || [];
+    $('#ovActivity').innerHTML = act.length
+      ? act.slice(0, 4).map((a) => `<div class="diag-row"><div class="line">${a.ok ? '<span class="badge ok">成功</span>' : '<span class="badge err">失败</span>'}<span class="muted">${esc(fmtTime(a.ts))}</span><span>${esc(a.source || '未知来源')}</span><span class="muted">${esc(a.method || a.reason || '')}</span></div></div>`).join('')
+      : '<div class="empty">暂无接入记录，发一条 webhook 试试。</div>';
+    const src = d.sources.find((s) => s.id === 'manual') || d.sources[0];
+    if (src) {
+      $('#ovExample').textContent =
+        '接收地址：' + src.webhookUrl + '\n' +
+        '签名密钥：<在来源卡片「显示密钥」获取>\n\n' +
+        'curl -X POST "' + src.webhookUrl + '?token=<密钥>" \\\n' +
+        '  -H "content-type: application/json" \\\n' +
+        '  -d \'{"title":"标题","text":"正文"}\'';
+    }
+    const failures = act.filter((a) => !a.ok).length;
+    $('#activityHint').textContent = failures
+      ? `最近 ${act.length} 次接入中有 ${failures} 次失败，可在下方查看收到的请求头。`
+      : '记录最近 100 次接入，含收到但认证失败的请求。';
+  }
+
+  // ---------------- devices ----------------
+  function renderDevices(d) {
+    const box = $('#devices');
+    $('#deviceSummary').textContent = `共 ${d.devices.length} 台 · 在线 ${d.stats.online}`;
+    if (!d.devices.length) {
+      box.innerHTML = '<div class="empty">还没有设备。点「生成配对码」，在 App 里完成配对。</div>';
+      return;
+    }
+    box.innerHTML = d.devices.map((x) => `
+      <div class="item">
+        <div class="head">
+          <div>
+            <div class="title">${esc(x.name || x.id)} <span class="badge ${x.online ? 'ok' : 'off'}">${x.online ? '在线' : '离线'}</span></div>
+            <div class="meta">最近连接 ${timeAgo(x.lastSeenAt)} · 断开 ${timeAgo(x.lastOfflineAt)}${x.lastError ? " · " + esc(x.lastError) : ""} · 待收 ${x.pending} 条${x.recipient ? ' · 收件人 ' + esc(x.recipient) : ''}</div>
+            <div class="meta mono">id ${esc(x.id)}</div>
+          </div>
+          <div class="actions">
+            <button class="btn small" data-action="device-recipient" data-id="${esc(x.id)}">收件人</button>
+            <button class="btn small" data-action="device-token" data-id="${esc(x.id)}">Token</button>
+            <button class="btn small danger" data-action="device-delete" data-id="${esc(x.id)}">删除</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ---------------- sources ----------------
+  function renderSources(d) {
+    const box = $('#sources');
+    box.innerHTML = d.sources.map((s) => {
+      const sec = state.secrets[s.id];
+      const revealed = state.revealed.has(s.id) && sec;
+      return `
+      <div class="card">
+        <div class="head row">
+          <div class="grow">
+            <div class="title" style="font-weight:600;font-size:14.5px">${esc(s.name)} <span class="inline-code">${esc(s.id)}</span>
+              ${s.enabled ? '<span class="badge ok">启用</span>' : '<span class="badge off">停用</span>'}
+            </div>
+            <div class="meta muted">${s.count || 0} 条 · 最近 ${timeAgo(s.lastAt)} · 默认优先级 ${esc(s.defaultPriority)}</div>
+          </div>
+          <div class="actions row">
+            <label class="switch"><input type="checkbox" data-action="source-toggle" data-id="${esc(s.id)}" ${s.enabled ? 'checked' : ''}>启用</label>
+            <button class="btn small" data-action="source-test" data-id="${esc(s.id)}">测试</button>
+            <button class="btn small" data-action="source-wizard" data-id="${esc(s.id)}">接入示例</button>
+          </div>
+        </div>
+        <div class="code mt8">${esc(s.webhookUrl)}</div>
+        <div class="row mt8">
+          <button class="btn small" data-action="copy" data-copy="${esc(s.webhookUrl)}">复制地址</button>
+          <button class="btn small primary" data-action="source-copy-secret-url" data-id="${esc(s.id)}">复制带密钥地址</button>
+          <button class="btn small" data-action="source-secret" data-id="${esc(s.id)}">${revealed ? '隐藏密钥' : '显示密钥'}</button>
+          <button class="btn small" data-action="source-rotate" data-id="${esc(s.id)}">重置密钥</button>
+          <button class="btn small danger" data-action="source-delete" data-id="${esc(s.id)}">删除</button>
+        </div>
+        ${revealed ? `
+          <div class="code mt8">secret: ${esc(sec.secret)}
+key:    ${esc(sec.key)}</div>
+          <div class="row mt8">
+            <button class="btn small" data-action="copy" data-copy="${esc(sec.secret)}">复制 secret</button>
+            <button class="btn small" data-action="copy" data-copy="${esc(sec.key)}">复制 key</button>
+            <span class="muted" style="font-size:11.5px">签名密钥填 secret；Bark 的 key 填 key。</span>
+          </div>` : ''}
+      </div>`;
+    }).join('') || '<div class="empty">还没有来源，点右上角新建。</div>';
+  }
+
+  function fillSourceFilter(d) {
+    const sel = $('#msgSource');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="all">全部来源</option>' +
+      d.sources.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    sel.value = cur && [...sel.options].some((o) => o.value === cur) ? cur : 'all';
+  }
+
+  // ---------------- messages ----------------
+  function renderMessages() {
+    const d = state.data;
+    if (!d) return;
+    const box = $('#messages');
+    const q = ($('#msgSearch').value || '').trim().toLowerCase();
+    const src = $('#msgSource').value;
+    let list = d.messages.filter((m) => (src === 'all' || m.source === src)
+      && (!q || (m.title || '').toLowerCase().includes(q) || (m.body || '').toLowerCase().includes(q)));
+    const total = list.length;
+    list = list.slice(0, state.msgLimit);
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">没有符合条件的消息。</div>';
+      return;
+    }
+    box.innerHTML = list.map((m) => {
+      const body = state.full[m.id] ?? m.body ?? '';
+      const long = (m.bodyLen ?? body.length) > 220 || body.split('\n').length > 4;
+      const open = state.expanded.has(m.id);
+      return `
+      <div class="msg">
+        <div class="t">${esc(m.title || '(无标题)')}
+          ${m.priority === 'high' ? '<span class="badge warn">高</span>' : ''}
+          <span class="badge off">${esc(sourceName(m.source))}</span>
+        </div>
+        <div class="b ${long && !open ? 'clamp' : ''}">${esc(body)}</div>
+        ${long ? `<button class="more" data-action="msg-expand" data-id="${esc(m.id)}">${open ? '收起' : '展开全文'}</button>` : ''}
+        ${attachmentHtml(m)}
+        <div class="meta">
+          <span>${esc(timeAgo(m.ts))}</span>
+          <span>${(m.devices || []).map(id => { const r = m.receipts?.[id] || {}; return esc(state.data.devices.find(d => d.id === id)?.name || id) + '：' + (r.confirmed ? '已明确确认' : r.opened ? '已打开详情' : r.received ? '设备已接收' : '等待接收'); }).join(' · ')}</span>
+          ${m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener">打开链接</a>` : ''}
+          <button class="btn small ghost" data-action="msg-replay" data-id="${esc(m.id)}">重推</button>
+          <button class="btn small danger" data-action="msg-delete" data-id="${esc(m.id)}">删除</button>
+        </div>
+      </div>`;
+    }).join('') + (total > list.length ? `<div class="center mt14"><button class="btn" data-action="msg-more">显示更多（还有 ${total - list.length} 条）</button></div>` : '');
+  }
+  function sourceName(id) {
+    const s = state.data?.sources.find((x) => x.id === id);
+    return s ? s.name : id;
+  }
+
+  function attachmentUrl(u) {
+    const s = String(u || '');
+    if (/^https?:\/\//i.test(s)) return s;
+    if (s.startsWith('/')) return location.origin + s;
+    return '';
+  }
+
+  function fmtSize(n) {
+    n = Number(n) || 0;
+    if (n <= 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+
+  function attachmentHtml(m) {
+    const list = Array.isArray(m.attachments) ? m.attachments.slice(0, 10) : [];
+    if (!list.length) return '';
+    const items = list.map((a) => {
+      const url = attachmentUrl(a.url);
+      if (!url) return '';
+      const name = a.name || '附件';
+      const size = fmtSize(a.size);
+      if (a.type === 'image') {
+        return `<a class="att-img" href="${esc(url)}" target="_blank" rel="noopener" title="${esc(name)}"><img src="${esc(url)}" alt="${esc(name)}" loading="lazy"></a>`;
+      }
+      if (a.type === 'video') {
+        return `<video class="att-video" controls preload="metadata" src="${esc(url)}"></video>`;
+      }
+      return `<a class="att-file" href="${esc(url)}" target="_blank" rel="noopener"><span class="att-ico">📄</span><span class="att-name">${esc(name)}</span><span class="att-size">${esc(size)}</span></a>`;
+    }).filter(Boolean);
+    return items.length ? `<div class="attachments">${items.join('')}</div>` : '';
+  }
+  $('#msgSource').addEventListener('change', renderMessages);
+  $('#msgSearch').addEventListener('input', () => { state.msgLimit = 50; renderMessages(); });
+
+  // ---------------- activity ----------------
+  function renderActivity() {
+    const d = state.data;
+    if (!d) return;
+    const box = $('#activity');
+    let list = d.activity || [];
+    if ($('#onlyFailed').checked) list = list.filter((a) => !a.ok);
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">暂无记录。让平台发一次请求后再来看。</div>';
+      return;
+    }
+    box.innerHTML = list.slice(0, 100).map((a) => `
+      <div class="diag-row">
+        <div class="line">
+          ${a.ok ? '<span class="badge ok">成功</span>' : '<span class="badge err">失败</span>'}
+          <span class="muted">${esc(new Date(a.ts).toLocaleString('zh-CN', { hour12: false }))}</span>
+          <span>${esc(a.source || '未知来源')}</span>
+          <span class="inline-code">${esc(a.method || a.reason || '')}</span>
+          <span class="muted">${esc(a.ip || '')}</span>
+        </div>
+        <div class="hdr">请求头：${esc(Object.entries(a.headers || {}).map(([k, v]) => k + '=' + v).join(' · ') || '无')}${a.query?.length ? ' · query: ' + esc(a.query.join(',')) : ''}</div>
+        ${a.ok ? '' : `<details class="hdr"><summary>排查提示</summary><pre>${esc([
+          '平台「签名密钥」应填来源 secret；如果平台只发送签名，我们已支持：',
+          '- X-Signature: hex(HMAC-SHA256(secret, rawBody))',
+          '- 同上的 base64，或加 sha256= 前缀',
+          '- 带 x-timestamp 的 timestamp.body / timestamp\\nbody 变体',
+          '- ?sign=<HMAC> / ?sign=<secret> 以及飞书 body.sign',
+          '如果仍失败：把上面的「请求头」发给我们，或把平台名称告诉我们要适配。'
+        ].join('\n'))}</pre></details>`}
+      </div>`).join('');
+  }
+  $('#onlyFailed').addEventListener('change', renderActivity);
+
+  // ---------------- modal ----------------
+  function openModal(title, body, foot = '') {
+    stopApkPolling(); apkMode = null;
+    $('#modalCard').innerHTML = `
+      <div class="modal-head"><h3>${esc(title)}</h3><button class="btn small ghost" data-action="close-modal">关闭</button></div>
+      <div class="modal-body">${body}</div>
+      ${foot ? `<div class="modal-foot">${foot}</div>` : ''}`;
+    $('#modal').classList.add('open');
+  }
+  let apkTimer = null, apkSequence = 0, apkMode = null;
+  function stopApkPolling() { clearTimeout(apkTimer); apkTimer = null; apkSequence++; }
+  function closeModal() { stopApkPolling(); apkMode = null; $('#modal').classList.remove('open'); }
+  async function refreshApkModal() {
+    stopApkPolling();
+    if (!apkMode || document.hidden || !state.token || !$('#modal').classList.contains('open')) return;
+    const sequence = apkSequence, mode = apkMode;
+    try {
+      const p = await api('/api/admin/apk?mode=' + mode);
+      if (sequence !== apkSequence) return;
+      document.querySelectorAll('.apk-version').forEach(el => el.textContent = p.versionName);
+      $('#setVersion').textContent = `Android ${p.versionName} (${p.versionCode})`;
+      $('#modalCard .modal-body').innerHTML = `<p><strong>PushHub ${esc(p.versionName)} (${p.versionCode})</strong> · ${(p.size / 1048576).toFixed(2)} MiB</p><div class="row"><button class="btn" data-action="download-local">当前地址 / 内网</button><button class="btn" data-action="download-public">公网下载</button></div><p>当前模式：${mode === 'public' ? '公网' : '当前请求地址'}；手机须能访问此地址。</p><div class="center"><img width="240" height="240" alt="浏览器下载二维码" src="${esc(p.qr)}"></div><p><a class="btn primary" href="${esc(p.downloadUrl)}">下载 ${esc(p.filename)}</a></p><p class="mono" style="overflow-wrap:anywhere">${esc(p.downloadUrl)}</p><p class="muted" style="overflow-wrap:anywhere">SHA256: ${esc(p.sha256)}</p>`;
+    } catch (error) {
+      if (sequence !== apkSequence) return;
+      $('#modalCard .modal-body').innerHTML = `<p>${esc(error.message)}；将自动重试。</p><button class="btn" data-action="download-local">当前地址 / 内网</button><button class="btn" data-action="download-public">公网下载</button>`;
+    } finally {
+      if (sequence === apkSequence && apkMode && !document.hidden) apkTimer = setTimeout(refreshApkModal, 5000);
+    }
+  }
+  document.addEventListener('visibilitychange', () => { stopApkPolling(); if (!document.hidden && apkMode) refreshApkModal(); });
+  $('#modal').addEventListener('click', (e) => {
+    if (e.target.id === 'modal') closeModal();
+    const tab = e.target.closest('[data-wizard-tab]');
+    if (tab) {
+      $$('#modal [data-wizard-tab]').forEach((b) => b.classList.toggle('active', b === tab));
+      $$('#modal [data-wizard-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.wizardPane !== tab.dataset.wizardTab));
+    }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  async function openPair(mode = 'local') {
+    try {
+      const p = await api('/api/admin/pair', { method: 'POST', body: { mode } });
+      openModal('配对一台新手机', `
+        <div class="row"><button class="btn" data-action="pair-local">内网配对</button><button class="btn" data-action="pair-public">公网配对</button></div>
+        <div class="muted center">当前：${mode === 'public' ? '公网' : '内网'}；切换会生成新的一次性配对码。在手机 App 里输入下面的服务器地址和配对码</div>
+        <div class="center"><img width="240" height="240" alt="本地生成的配对二维码" src="${esc(p.qr)}"></div><div class="paircode">${esc(p.code)}</div>
+        <div class="center muted" id="pairCountdown"></div>
+        <div class="code mt14">服务器地址：${esc(p.serverUrl)}
+配对码：${esc(p.code)}</div>
+        <div class="row mt14">
+          <button class="btn primary" data-action="copy" data-copy="${esc(p.code)}">复制配对码</button>
+          <button class="btn" data-action="copy" data-copy="${esc(p.serverUrl)}">复制服务器地址</button>
+        </div>
+        <div class="muted mt14" style="font-size:12px">配对码 10 分钟内有效，只能用一次。App 下载：<a href="/PushHub.apk">PushHub.apk</a></div>
+      `);
+      const tick = () => {
+        const left = Math.max(0, Math.round((Date.parse(p.expiresAt) - Date.now()) / 1000));
+        const el = $('#pairCountdown');
+        if (el) el.textContent = left > 0 ? `剩余 ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : '已过期，请重新生成';
+      };
+      tick();
+      clearInterval(state.pairTimer);
+      state.pairTimer = setInterval(tick, 1000);
+    } catch (e) { toast(e.message); }
+  }
+
+  async function openWizard(id) {
+    const s = state.data.sources.find((x) => x.id === id);
+    if (!s) return;
+    let sec;
+    try { sec = await sourceSecret(id); } catch (e) { toast(e.message); return; }
+    const url = s.webhookUrl;
+    const secret = sec.secret;
+    const node = `// Node / 平台自定义脚本：对原始 body 做 HMAC-SHA256
+const crypto = require('crypto');
+const body = JSON.stringify({ title: '标题', text: '正文' });
+const sign = crypto.createHmac('sha256', '${secret}').update(body).digest('hex');
+// POST ${url}
+// headers: { 'content-type': 'application/json', 'x-signature': sign }`;
+    const py = `import hmac, hashlib, requests
+body = '{"title":"标题","text":"正文"}'
+sign = hmac.new(b'${secret}', body.encode(), hashlib.sha256).hexdigest()
+requests.post('${url}', data=body.encode(),
+              headers={'content-type': 'application/json', 'x-signature': sign})`;
+    const curl = `curl -X POST '${url}' \\
+  -H 'content-type: application/json' \\
+  -H 'x-pushhub-secret: ${secret}' \\
+  -d '{"title":"标题","text":"正文"}'`;
+    const platform = `在平台里这样填：
+  接收地址：${url}
+  签名密钥：${secret}
+
+说明：
+  - 如果平台把「签名密钥」原样发送（x-signature / sign 参数），可以直接用；
+  - 如果平台用它做 HMAC-SHA256 签名，服务端会自动校验（hex / base64 / sha256= 前缀 /
+    带 x-timestamp 的 timestamp.body 或 timestamp\\nbody 变体 / 飞书 body.sign）；
+  - 不放心就去「接入诊断」看收到的请求头。`;
+    openModal('接入示例 · ' + s.name, `
+      <div class="kv">
+        <div class="k">接收地址</div><div class="v mono">${esc(url)}</div>
+        <div class="k">签名密钥</div><div class="v mono">${esc(secret)}</div>
+      </div>
+      <div class="tabs">
+        <button class="active" data-wizard-tab="platform">平台字段</button>
+        <button data-wizard-tab="curl">curl</button>
+        <button data-wizard-tab="node">Node</button>
+        <button data-wizard-tab="python">Python</button>
+      </div>
+      <div data-wizard-pane="platform"><div class="code">${esc(platform)}</div></div>
+      <div data-wizard-pane="curl" class="hidden"><div class="code">${esc(curl)}</div></div>
+      <div data-wizard-pane="node" class="hidden"><div class="code">${esc(node)}</div></div>
+      <div data-wizard-pane="python" class="hidden"><div class="code">${esc(py)}</div></div>
+      <div class="row mt14">
+        <button class="btn" data-action="copy" data-copy="${esc(url)}">复制地址</button>
+        <button class="btn" data-action="copy" data-copy="${esc(secret)}">复制签名密钥</button>
+        <button class="btn primary" data-action="copy-curl" data-id="${esc(id)}">复制 curl</button>
+      </div>
+    `);
+    state.wizard = { url, secret };
+  }
+
+  function openAddSource() {
+    openModal('新建来源', `
+      <div class="row">
+        <input id="nsId" placeholder="标识，如 rss（小写字母/数字/-/_）" style="flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:10px">
+        <input id="nsName" placeholder="显示名称，如 RSS 订阅" style="flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:10px">
+      </div>
+      <div class="row mt14">
+        <label class="muted">类型</label>
+        <select id="nsPreset" style="border:1px solid var(--line);border-radius:10px;padding:8px">
+          <option value="">通用 webhook</option>
+          <option value="email">邮件（内置字段映射 + 邮箱打码）</option>
+        </select>
+      </div>
+      <div class="muted mt14" style="font-size:12px">创建后立即生成接收地址与密钥，可随时重置。</div>
+    `, `<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="do-add-source">创建</button>`);
+  }
+
+  function openCompose() {
+    const sources = state.data.sources.filter((s) => s.enabled);
+    if (!sources.length) return toast('请先启用一个消息来源');
+    const inputStyle = 'width:100%;border:1px solid var(--line);border-radius:10px;padding:10px';
+    openModal('发送消息', `
+      <form id="composeForm">
+        <label for="composeSource">消息来源</label>
+        <select id="composeSource" style="${inputStyle}">${sources.map((s) => `<option value="${esc(s.id)}" ${s.id === 'manual' ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>
+        <label for="composeTitle" class="mt14" style="display:block">标题</label>
+        <input id="composeTitle" required maxlength="512" style="${inputStyle}" placeholder="输入通知标题">
+        <label for="composeBody" class="mt14" style="display:block">正文</label>
+        <textarea id="composeBody" required maxlength="20000" rows="6" style="${inputStyle}" placeholder="输入消息正文"></textarea>
+        <label for="composeUrl" class="mt14" style="display:block">打开链接（可选）</label>
+        <input id="composeUrl" type="url" maxlength="2000" style="${inputStyle}" placeholder="http://...">
+        <label for="composePriority" class="mt14" style="display:block">重要程度</label>
+        <select id="composePriority" style="${inputStyle}"><option value="normal">普通</option><option value="high">重要</option><option value="low">低优先级</option></select>
+        <label for="composeFiles" class="mt14" style="display:block">附件（可选，最多 10 个，单个 20 MB）</label>
+        <input id="composeFiles" type="file" multiple style="${inputStyle}">
+        <div id="composeFileList" class="muted mt8" style="font-size:12px;overflow-wrap:anywhere"></div>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">图片和视频会在 App 详情页与通知里展示；文档显示为可打开的附件。也可以不传文件，在正文里直接写外链。</p>
+        <fieldset class="mt14" style="border:1px solid var(--line);border-radius:10px;padding:12px"><legend>发送给</legend>
+          <label><input id="composeAll" type="checkbox" checked> 全部已配对设备</label>
+          <div id="composeTargets" class="hidden">${state.data.devices.map((d) => `<label style="display:block;padding:6px"><input type="checkbox" name="composeDevice" value="${esc(d.id)}"> ${esc(d.name || d.id)} · ${d.online ? '在线' : '离线（恢复后接收）'}</label>`).join('')}</div>
+        </fieldset>
+        <details class="mt14"><summary>预览通知</summary><div id="composePreview" style="white-space:pre-wrap;overflow-wrap:anywhere;padding:12px"></div></details>
+        <div id="composeError" role="alert" style="color:var(--err);margin-top:12px"></div>
+      </form>
+    `, '<button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-action="send-message">发送</button>');
+    const preview = () => {
+      const files = $('#composeFiles') ? [...$('#composeFiles').files] : [];
+      const att = files.length ? '\n\n附件：' + files.map((f) => f.name).join('、') : '';
+      $('#composePreview').textContent = ($('#composeTitle').value || '通知标题') + '\n\n' + ($('#composeBody').value || '消息正文') + att;
+    };
+    $('#composeAll').addEventListener('change', () => $('#composeTargets').classList.toggle('hidden', $('#composeAll').checked));
+    $('#composeTitle').addEventListener('input', preview);
+    $('#composeBody').addEventListener('input', preview);
+    const filesEl = $('#composeFiles');
+    if (filesEl) filesEl.addEventListener('change', () => {
+      const files = [...filesEl.files];
+      $('#composeFileList').textContent = files.map((f) => f.name + (f.size ? '（' + fmtSize(f.size) + '）' : '')).join(' · ');
+      preview();
+    });
+    $('#composeForm').addEventListener('submit', (e) => e.preventDefault());
+    preview();
+    $('#composeTitle').focus();
+  }
+
+  async function quickTest() {
+    const src = state.data.sources.find((s) => s.id === 'manual') || state.data.sources[0];
+    if (!src) return toast('请先新建一个来源');
+    try {
+      await api('/api/admin/sources/' + encodeURIComponent(src.id) + '/test', { method: 'POST' });
+      toast('测试消息已发送');
+    } catch (e) { toast(e.message); }
+  }
+
+  // ---------------- actions ----------------
+  document.addEventListener('click', async (e) => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const a = el.dataset.action;
+    const id = el.dataset.id;
+    try {
+      switch (a) {
+        case 'lock': lock(); break;
+        case 'refresh': await refresh(); toast('已刷新'); break;
+        case 'close-modal': closeModal(); break;
+        case 'download-apk': case 'download-local': case 'download-public': {
+          const mode = a === 'download-public' ? 'public' : a === 'download-local' ? 'local' : (apkMode || 'local');
+          if (!apkMode) openModal('下载最新版 APK', '<p>正在读取发布信息…</p>');
+          apkMode = mode;
+          await refreshApkModal();
+          break;
+        }
+        case 'pair': case 'pair-local': await openPair('local'); break;
+        case 'pair-public': await openPair('public'); break;
+        case 'compose': openCompose(); break;
+        case 'send-message': {
+          if (el.disabled || !$('#composeForm').reportValidity()) break;
+          const body = { source: $('#composeSource').value, title: $('#composeTitle').value.trim(), body: $('#composeBody').value.trim(), url: $('#composeUrl').value.trim(), priority: $('#composePriority').value };
+          if (!body.title || !body.body) { $('#composeError').textContent = '标题和正文不能为空'; break; }
+          if (!$('#composeAll').checked) {
+            body.devices = $$('#composeTargets input:checked').map((x) => x.value);
+            if (!body.devices.length) { $('#composeError').textContent = '请至少选择一台设备'; break; }
+          }
+          el.disabled = true;
+          $('#composeError').textContent = '';
+          try {
+            const files = $('#composeFiles') ? [...$('#composeFiles').files] : [];
+            if (files.length > 10) throw new Error('最多 10 个附件');
+            const attachments = [];
+            for (const f of files) {
+              if (f.size > 20 * 1024 * 1024) throw new Error(`附件「${f.name}」超过 20 MB`);
+              $('#composeError').textContent = `正在上传 ${f.name}…`;
+              const r = await fetch('/api/upload?name=' + encodeURIComponent(f.name), {
+                method: 'POST',
+                headers: { authorization: 'Bearer ' + state.token, 'content-type': f.type || 'application/octet-stream' },
+                body: f,
+              });
+              const j = await r.json().catch(() => ({}));
+              if (!r.ok) throw new Error(j.error || `附件「${f.name}」上传失败`);
+              attachments.push(j.attachment);
+            }
+            if (attachments.length) body.attachments = attachments;
+            $('#composeError').textContent = '';
+            const result = await api('/api/admin/messages', { method: 'POST', body });
+            closeModal();
+            toast(`已发送到在线设备 ${result.sent} 台，离线排队 ${result.queued} 台`);
+            await refresh();
+          } catch (err) {
+            if ($('#composeError')) $('#composeError').textContent = err.message;
+          } finally { el.disabled = false; }
+          break;
+        }
+        case 'quick-test': await quickTest(); break;
+        case 'add-source': openAddSource(); break;
+        case 'do-add-source': {
+          const sid = ($('#nsId')?.value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+          const name = ($('#nsName')?.value || '').trim() || sid;
+          const preset = $('#nsPreset')?.value || '';
+          if (!sid) return toast('请填写标识');
+          await api('/api/admin/sources', { method: 'POST', body: { id: sid, name, ...(preset ? { preset } : {}) } });
+          closeModal();
+          toast('来源已创建');
+          await refresh();
+          break;
+        }
+        case 'source-toggle': {
+          const on = el.checked;
+          await api('/api/admin/sources/' + encodeURIComponent(id), { method: 'PATCH', body: { enabled: on } });
+          toast(on ? '已启用' : '已停用');
+          await refresh();
+          break;
+        }
+        case 'source-test':
+          el.disabled = true;
+          await api('/api/admin/sources/' + encodeURIComponent(id) + '/test', { method: 'POST' });
+          toast('已发送测试消息');
+          break;
+        case 'source-secret': {
+          if (state.revealed.has(id) && state.secrets[id]) { state.revealed.delete(id); }
+          else { await sourceSecret(id); state.revealed.add(id); }
+          renderSources(state.data);
+          break;
+        }
+        case 'source-copy-secret-url': {
+          const s = await sourceSecret(id);
+          await copyText(state.data.sources.find((x) => x.id === id).webhookUrl + '?token=' + s.secret);
+          break;
+        }
+        case 'source-rotate': {
+          if (!confirm('重置后旧密钥立即失效，需要同步修改调用方。继续？')) break;
+          const r = await api('/api/admin/sources/' + encodeURIComponent(id) + '/rotate', { method: 'POST' });
+          state.secrets[id] = { ...(state.secrets[id] || {}), secret: r.secret };
+          state.revealed.add(id);
+          toast('密钥已重置');
+          await refresh();
+          break;
+        }
+        case 'source-delete': {
+          if (!confirm('删除这个来源？对应地址会立即失效。')) break;
+          await api('/api/admin/sources/' + encodeURIComponent(id), { method: 'DELETE' });
+          delete state.secrets[id];
+          toast('来源已删除');
+          await refresh();
+          break;
+        }
+        case 'source-wizard': await openWizard(id); break;
+        case 'device-recipient': {
+          const dev = state.data.devices.find((x) => x.id === id);
+          const v = prompt('收件人标识（配合来源的「按收件人过滤」使用，可留空）', dev?.recipient || '');
+          if (v === null) break;
+          await api('/api/admin/devices/' + encodeURIComponent(id), { method: 'PATCH', body: { recipient: v.trim() } });
+          toast('已保存');
+          await refresh();
+          break;
+        }
+        case 'device-token': {
+          const r = await api('/api/admin/devices/' + encodeURIComponent(id) + '/token');
+          await copyText(r.token);
+          break;
+        }
+        case 'device-delete': {
+          if (!confirm('删除这台设备？token 会立即失效。')) break;
+          await api('/api/admin/devices/' + encodeURIComponent(id), { method: 'DELETE' });
+          toast('设备已删除');
+          await refresh();
+          break;
+        }
+        case 'copy': await copyText(el.dataset.copy || ''); break;
+        case 'copy-curl': {
+          const w = state.wizard;
+          await copyText(`curl -X POST '${w.url}' \\\n  -H 'content-type: application/json' \\\n  -H 'x-pushhub-secret: ${w.secret}' \\\n  -d '{"title":"标题","text":"正文"}'`);
+          break;
+        }
+        case 'msg-expand': {
+          if (state.expanded.has(id)) {
+            state.expanded.delete(id);
+          } else {
+            state.expanded.add(id);
+            const m = state.data.messages.find((x) => x.id === id);
+            if (m && (m.bodyLen ?? 0) > (m.body || '').length && !state.full[id]) {
+              const r = await api('/api/admin/messages/' + encodeURIComponent(id));
+              state.full[id] = r.message?.body ?? '';
+            }
+          }
+          renderMessages();
+          break;
+        }
+        case 'msg-replay':
+          await api('/api/admin/messages/' + encodeURIComponent(id) + '/replay', { method: 'POST' });
+          toast('已重推');
+          break;
+        case 'msg-delete':
+          if (!confirm('删除这条历史？')) break;
+          await api('/api/admin/messages/' + encodeURIComponent(id), { method: 'DELETE' });
+          await refresh();
+          break;
+        case 'msg-more': state.msgLimit += 50; renderMessages(); break;
+        case 'clear-messages':
+          if (!confirm('清空全部消息历史？设备队列不受影响。')) break;
+          await api('/api/admin/messages', { method: 'DELETE' });
+          toast('历史已清空');
+          await refresh();
+          break;
+        case 'clear-activity':
+          if (!confirm('清空接入诊断记录？')) break;
+          await api('/api/admin/activity', { method: 'DELETE' });
+          await refresh();
+          break;
+        case 'save-settings': {
+          const retentionDays = Number($('#setRetention').value);
+          const maxMessages = Number($('#setMax').value);
+          await api('/api/admin/settings', { method: 'PATCH', body: { apkPublicDownloadUrl: $('#setApkPublicDownloadUrl').value, retentionDays, maxMessages, localPairUrl: $('#setLocalPairUrl').value, publicPairUrl: $('#setPublicPairUrl').value } });
+          toast('设置已保存');
+          await refresh();
+          break;
+        }
+        default: break;
+      }
+    } catch (err) {
+      toast(err.message || String(err));
+    } finally {
+      el.disabled = false;
+    }
+  });
+
+  // ---------------- boot ----------------
+  if (state.token) {
+    refresh().then(showApp).catch(() => { /* show auth */ });
+  }
+})();
+</script>
+</body>
+</html>

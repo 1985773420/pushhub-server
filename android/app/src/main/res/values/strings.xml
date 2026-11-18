@@ -1,0 +1,93 @@
+<resources>
+    <string name="app_name">PushHub 推送</string>
+    <string name="pair_title">连接推送服务器</string>
+    <string name="server_hint">服务器地址，如 https://push.example.com 或 http://192.168.1.100:8095</string>
+    <string name="code_hint">8 位配对码（服务端生成）</string>
+    <string name="device_name_hint">设备名（可选）</string>
+    <string name="pair_button">配对并开始接收</string>
+    <string name="pairing_msg">配对中…</string>
+    <string name="pair_error">配对失败：%s</string>
+    <string name="status_connecting">连接中…</string>
+    <string name="status_connected">已连接 · %s</string>
+    <string name="status_offline">离线（重试中 %ss 后）</string>
+    <string name="status_replaced">该设备已在别处连接</string>
+    <string name="status_unauthorized">配对已失效，请重新配对</string>
+    <string name="status_paused">已暂停接收</string>
+    <string name="test_push">发送自检消息</string>
+    <string name="test_sent">已发送，稍后应收到通知</string>
+    <string name="storage">消息记录</string>
+    <string name="sources">消息来源</string>
+    <string name="silent">静音模式（不响铃）</string>
+    <string name="live_updates">流体云实况通知（Android 16+）</string>
+    <string name="live_on">已开启：新消息会尝试显示在状态栏胶囊/流体云</string>
+    <string name="live_off_system">系统未允许实况通知，点此去开启</string>
+    <string name="live_unsupported">当前系统版本不支持实况通知（需 Android 16+）</string>
+    <string name="live_disabled">已关闭</string>
+    <string name="live_settings">通知与实况设置</string>
+    <string name="detail_title">消息详情</string>
+    <string name="detail_copy">复制全文</string>
+    <string name="detail_open">打开链接</string>
+    <string name="detail_close">关闭</string>
+    <string name="detail_copied">已复制全文</string>
+    <string name="detail_no_link">这条消息没有链接</string>
+    <string name="detail_empty">（空消息）</string>
+    <string name="detail_full">查看全文 ›</string>
+    <string name="detail_loading">加载中…</string>
+    <string name="detail_load_failed">没有拿到完整内容：本地没有缓存，服务器也不可达。请回到列表重新打开，或检查网络后再试。</string>
+    <string name="crash_title">上次运行崩溃了</string>
+    <string name="crash_copy">复制日志</string>
+    <string name="crash_clear">删除日志</string>
+    <string name="crash_copied">崩溃日志已复制</string>
+    <string name="battery">后台保活设置（防杀进程）</string>
+    <string name="keepalive_title">后台保活设置</string>
+    <string name="keepalive_body">系统杀掉进程后，PushHub 会靠 15 分钟一次的看护闹钟尝试恢复长连接；恢复不了时会把服务端排队的消息补发成通知。
+
+建议完成下面几项：
+1) 忽略电池优化
+2) 允许精确闹钟（看护能准时唤醒）
+3) 应用信息 → 耗电管理/自启动 → 允许后台活动
+4) 最近任务里下拉锁定 PushHub
+
+注意：被系统“强行停止”或被厂商深度冻结后，Android 不允许应用自启，此时只能依赖厂商推送通道（需接入 OPPO/ColorOS 推送）。</string>
+    <string name="keepalive_battery">忽略电池优化</string>
+    <string name="keepalive_alarm">允许精确闹钟</string>
+    <string name="keepalive_appinfo">应用信息 / 耗电管理</string>
+    <string name="keepalive_notify">通知与实况设置</string>
+    <string name="repair">重新配对</string>
+    <string name="unpair">退出配对</string>
+    <string name="pause">暂停接收</string>
+    <string name="resume">开始接收</string>
+    <string name="empty_history">暂无消息。配好后去服务端「发送测试」，或从脚本推一条试试。</string>
+    <string name="conn_channel">连接状态</string>
+    <string name="conn_title">PushHub 推送已连接</string>
+    <string name="conn_text">%s · 通知将实时送达</string>
+    <string name="conn_reconnecting">PushHub 连接中断，正在重连…</string>
+    <string name="notify_test_title">自检消息</string>
+    <string name="notify_test_body">推送链路正常：这条消息来自你的服务端。</string>
+    <string name="notification_channel_suffix">推送</string>
+    <string name="pair_hero_title">连接推送服务器</string>
+    <string name="pair_hero_sub">输入服务器地址和配对码，开始接收通知</string>
+    <string name="pair_help_title">在哪里找配对码？</string>
+    <string name="pair_help_body">打开服务端控制台 → 点「生成配对码」；配对码 10 分钟内有效、只能用一次。\n\n服务器地址示例：\nhttp://192.168.1.100:8095</string>
+    <string name="section_sources_sub">可以单独静音某个来源</string>
+    <string name="section_notify">通知与后台</string>
+    <string name="section_history">消息记录</string>
+    <string name="history_count">%d 条</string>
+    <string name="empty_title">还没有消息</string>
+    <string name="empty_sub">配好来源后，推送会自动出现在这里</string>
+    <string name="keepalive_row">后台保活设置</string>
+    <string name="keepalive_row_sub">电池优化、精确闹钟、自启动</string>
+    <string name="notif_settings_row">系统通知设置</string>
+    <string name="notif_settings_row_sub">通知权限、渠道与流体云</string>
+    <string name="priority_high">重要</string>
+    <string name="source_empty">连接成功后，这里会列出消息来源</string>
+    <string name="detail_confirm">明确确认此消息</string>
+    <string name="detail_confirmed">已确认（离线时自动补报）</string>
+    <string name="detail_confirm_loading">消息加载中，稍后再确认</string>
+    <string name="attachments_title">附件</string>
+    <string name="attachment_image">图片附件</string>
+    <string name="attachment_video">视频</string>
+    <string name="attachment_file">文档</string>
+    <string name="attachment_count">%d 个附件</string>
+    <string name="attachment_open_failed">没有可打开此附件的应用</string>
+</resources>

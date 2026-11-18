@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Widget.PushHub.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardCornerRadius="18dp">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/attachmentImage"
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:background="@color/surface_variant"
+        android:contentDescription="@string/attachment_image"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.PushHub.Media" />
+</com.google.android.material.card.MaterialCardView>

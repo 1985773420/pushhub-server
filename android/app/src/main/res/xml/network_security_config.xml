@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自建推送：用户自己配置服务器地址（家庭 NAS / 内网穿透 / 公网 VPS）。
+     明文 HTTP 仅用于个人内部链路；公网建议配置 HTTPS（服务端文档有说明）。 -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
